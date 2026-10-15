@@ -1,6 +1,6 @@
 # ROS 2 Unitree L2 LiDAR–internal-IMU calibration
 
-This branch ports the LI-Init estimator to ROS 2 Humble. It runs separately from the FAST-LIO and Point-LIO evaluation nodes. The launch subscribes directly to Unitree DDS `rt/utlidar/cloud` and `rt/utlidar/imu` through the paired bridge and republishes them as `/li_init/input/cloud` and `/li_init/input/imu`. Both ROS message headers keep the original L2 sensor stamps, and cloud point `time` remains seconds relative to the cloud start stamp. The parser converts those seconds to internal milliseconds. LI-Init estimates the residual LiDAR/IMU time offset itself.
+This branch ports the LI-Init estimator to ROS 2 Humble. It runs separately from the FAST-LIO and Point-LIO evaluation nodes. The launch subscribes directly to Unitree DDS `rt/utlidar/cloud` and `rt/utlidar/imu` through the paired bridge and republishes them as `/li_init/input/cloud` and `/li_init/input/imu`. Both ROS message headers keep the original L2 sensor stamps, and cloud point `time` remains seconds relative to the cloud start stamp. The parser converts those seconds to internal milliseconds. This L2 configuration fixes the residual LiDAR/IMU time lag at zero (`initialization.fix_time_lag: true`): it skips coarse lag correlation, fixes the fine lag solver at zero, and disables the hard timestamp shift. Set the parameter to `false` to restore lag estimation.
 
 The ROS 2 package needs Ceres, PCL, Eigen, and the workspace's `livox_ros_driver2` message package. With system packages installed:
 

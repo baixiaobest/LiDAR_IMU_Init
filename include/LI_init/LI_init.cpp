@@ -375,6 +375,8 @@ void LI_Init::solve_Rot_bias_gyro(double &timediff_imu_wrt_lidar) {
                                          bias_g,
                                          &time_lag2);
     }
+    if (fix_time_lag)
+        problem_ang_vel.SetParameterBlockConstant(&time_lag2);
 
 
     ceres::Solver::Options options_quat;
@@ -603,8 +605,13 @@ void LI_Init::LI_Initialization(int &orig_odom_freq, int &cut_frame_num, double 
     set_Lidar_state(Lidar_after_zero_phase);
     cut_sequence_tail();
 
-    xcorr_temporal_init(orig_odom_freq * cut_frame_num);
-    IMU_time_compensate(get_lag_time_1(), false);
+    if (!fix_time_lag) {
+        xcorr_temporal_init(orig_odom_freq * cut_frame_num);
+        IMU_time_compensate(get_lag_time_1(), false);
+    } else {
+        time_lag_1 = 0.0;
+        cout << "IMU-LiDAR time lag fixed at zero; skipping cross-correlation." << endl;
+    }
 
     central_diff();
 

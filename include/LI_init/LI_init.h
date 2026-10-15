@@ -214,6 +214,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     ofstream fout_LiDAR_meas, fout_IMU_meas, fout_before_filt_IMU, fout_before_filt_Lidar, fout_acc_cost, fout_after_rot;
     double data_accum_length;
+    bool fix_time_lag = false;
 
     LI_Init();
 

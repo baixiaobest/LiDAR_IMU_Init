@@ -320,7 +320,7 @@ void livox_pcl_cbk(const livox_ros_driver::CustomMsg::ConstSharedPtr &msg) {
     }
     last_timestamp_lidar = stamp_seconds(msg->header.stamp);
 
-    if (abs(last_timestamp_imu - last_timestamp_lidar) > 1.0 && !timediff_set_flg && !imu_buffer.empty()) {
+    if (!Init_LI->fix_time_lag && abs(last_timestamp_imu - last_timestamp_lidar) > 1.0 && !timediff_set_flg && !imu_buffer.empty()) {
         timediff_set_flg = true;
         timediff_imu_wrt_lidar = last_timestamp_imu - last_timestamp_lidar;
         printf("Self sync IMU and LiDAR, HARD time lag is %.10lf \n \n", timediff_imu_wrt_lidar);
@@ -357,7 +357,7 @@ void standard_pcl_cbk(const sensor_msgs::PointCloud2::ConstSharedPtr &msg) {
     }
 
     last_timestamp_lidar = stamp_seconds(msg->header.stamp);
-    if (abs(last_timestamp_imu - last_timestamp_lidar) > 1.0 && !timediff_set_flg && !imu_buffer.empty()) {
+    if (!Init_LI->fix_time_lag && abs(last_timestamp_imu - last_timestamp_lidar) > 1.0 && !timediff_set_flg && !imu_buffer.empty()) {
         timediff_set_flg = true;
         timediff_imu_wrt_lidar = last_timestamp_imu - last_timestamp_lidar;
         printf("Self sync IMU and LiDAR, HARD time lag is %.10lf \n \n", timediff_imu_wrt_lidar);
@@ -787,6 +787,7 @@ int main(int argc, char **argv) {
     nh.param<int>("initialization/orig_odom_freq", orig_odom_freq, 10);
     nh.param<double>("initialization/online_refine_time", online_refine_time, 20.0);
     nh.param<double>("initialization/mean_acc_norm", mean_acc_norm, 9.81);
+    nh.param<bool>("initialization/fix_time_lag", Init_LI->fix_time_lag, false);
     nh.param<double>("initialization/data_accum_length", Init_LI->data_accum_length, 300);
     nh.param<vector<double>>("initialization/Rot_LI_cov", Rot_LI_cov, vector<double>());
     nh.param<vector<double>>("initialization/Trans_LI_cov", Trans_LI_cov, vector<double>());
