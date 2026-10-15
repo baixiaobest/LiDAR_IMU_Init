@@ -5,14 +5,18 @@
 #include <Eigen/Eigen>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
-#include <lidar_imu_init/States.h>
-#include <lidar_imu_init/Pose6D.h>
-#include <sensor_msgs/Imu.h>
-#include <nav_msgs/Odometry.h>
-#include <tf/transform_broadcaster.h>
-#include <eigen_conversions/eigen_msg.h>
+#include <ros2_compat.hpp>
+#include <ros2_compat.hpp>
+#include <ros2_compat.hpp>
+#include <ros2_compat.hpp>
+#include <ros2_compat.hpp>
+#include <ros2_compat.hpp>
 #include <color.h>
 #include <scope_timer.hpp>
+#include <array>
+#include <filesystem>
+#include <cstdlib>
+#include <deque>
 
 using namespace std;
 using namespace Eigen;
@@ -30,10 +34,17 @@ using namespace Eigen;
 #define VEC_FROM_ARRAY(v)        v[0],v[1],v[2]
 #define MAT_FROM_ARRAY(v)        v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8]
 
-#define DEBUG_FILE_DIR(name)     (string(string(ROOT_DIR) + "Log/"+ name))
-#define RESULT_FILE_DIR(name)    (string(string(ROOT_DIR) + "result/"+ name))
+inline std::string li_init_output_dir() {
+    const char *env = std::getenv("LI_INIT_OUTPUT_DIR");
+    const std::string dir = env && *env ? env : "/tmp/li_init_results";
+    std::filesystem::create_directories(dir + "/Log");
+    std::filesystem::create_directories(dir + "/result");
+    return dir;
+}
+#define DEBUG_FILE_DIR(name)     (li_init_output_dir() + "/Log/" + name)
+#define RESULT_FILE_DIR(name)    (li_init_output_dir() + "/result/" + name)
 
-typedef lidar_imu_init::Pose6D     Pose6D;
+struct Pose6D { double offset_time = 0.0; std::array<double, 3> acc{}, gyr{}, vel{}, pos{}; std::array<double, 9> rot{}; };
 typedef pcl::PointXYZINormal PointType;
 typedef pcl::PointXYZRGB     PointTypeRGB;
 typedef pcl::PointCloud<PointType>    PointCloudXYZI;
@@ -62,7 +73,7 @@ struct MeasureGroup     // Lidar data and imu dates for the curent process
     };
     double lidar_beg_time;
     PointCloudXYZI::Ptr lidar;
-    deque<sensor_msgs::Imu::ConstPtr> imu;
+    deque<sensor_msgs::Imu::ConstSharedPtr> imu;
 };
 
 struct StatesGroup

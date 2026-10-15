@@ -1,4 +1,5 @@
 #include "LI_init.h"
+#include <cfloat>
 
 /*
 Description: LI-Init: a temporal-spatial lidar-inertial initialization package
@@ -51,13 +52,13 @@ void LI_Init::fout_before_filter() {
     }
 }
 
-void LI_Init::push_ALL_IMU_CalibState(const sensor_msgs::Imu::ConstPtr &msg, const double &mean_acc_norm) {
+void LI_Init::push_ALL_IMU_CalibState(const sensor_msgs::Imu::ConstSharedPtr &msg, const double &mean_acc_norm) {
     CalibState IMUstate;
     IMUstate.ang_vel = V3D(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
     IMUstate.linear_acc =
             V3D(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z) / mean_acc_norm *
             G_m_s2;
-    IMUstate.timeStamp = msg->header.stamp.toSec();
+    IMUstate.timeStamp = stamp_seconds(msg->header.stamp);
     IMU_state_group_ALL.push_back(IMUstate);
 }
 
@@ -650,6 +651,7 @@ LI_Init::print_initialization_result(double &time_L_I, M3D &R_L_I, V3D &p_L_I, V
 }
 
 void LI_Init::plot_result() {
+#ifndef DEPLOY
     vector<vector<double>> IMU_omg(3), IMU_acc(3), IMU_ang_acc(3), Lidar_omg(3), Lidar_acc(3), Lidar_ang_acc(3);
     for (auto it_IMU_state = IMU_state_group.begin(); it_IMU_state != IMU_state_group.end() - 1; it_IMU_state++) {
         for (int i = 0; i < 3; i++) {
@@ -713,4 +715,5 @@ void LI_Init::plot_result() {
     plt::show();
     plt::pause(0);
     plt::close();
+#endif
 }

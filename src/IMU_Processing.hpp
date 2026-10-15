@@ -8,7 +8,7 @@
 #include <thread>
 #include <fstream>
 #include <csignal>
-#include <ros/ros.h>
+#include <ros2_compat.hpp>
 #include <so3_math.h>
 #include <Eigen/Eigen>
 #include <common_lib.h>
@@ -16,16 +16,16 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <condition_variable>
-#include <nav_msgs/Odometry.h>
+#include <ros2_compat.hpp>
 #include <pcl/common/transforms.h>
 #include <pcl/kdtree/kdtree_flann.h>
-#include <tf/transform_broadcaster.h>
-#include <eigen_conversions/eigen_msg.h>
+#include <ros2_compat.hpp>
+#include <ros2_compat.hpp>
 #include <pcl_conversions/pcl_conversions.h>
-#include <sensor_msgs/Imu.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <lidar_imu_init/States.h>
-#include <geometry_msgs/Vector3.h>
+#include <ros2_compat.hpp>
+#include <ros2_compat.hpp>
+#include <ros2_compat.hpp>
+#include <ros2_compat.hpp>
 
 /// *************Preconfiguration
 
@@ -272,7 +272,7 @@ void ImuProcess::propagation_and_undist(const MeasureGroup &meas, StatesGroup &s
   pcl_out = *(meas.lidar);
   auto v_imu = meas.imu;
   v_imu.push_front(last_imu_);
-  double imu_end_time = v_imu.back()->header.stamp.toSec();
+  double imu_end_time = stamp_seconds(v_imu.back()->header.stamp);
   double pcl_beg_time, pcl_end_time;
 
   if (lidar_type == L515)
@@ -304,7 +304,7 @@ void ImuProcess::propagation_and_undist(const MeasureGroup &meas, StatesGroup &s
     auto &&head = *(it_imu);
     auto &&tail = *(it_imu + 1);
 
-    if (tail->header.stamp.toSec() < last_lidar_end_time_)    continue;
+    if (stamp_seconds(tail->header.stamp) < last_lidar_end_time_)    continue;
     
     angvel_avr<<0.5 * (head->angular_velocity.x + tail->angular_velocity.x),
                 0.5 * (head->angular_velocity.y + tail->angular_velocity.y),
@@ -317,15 +317,15 @@ void ImuProcess::propagation_and_undist(const MeasureGroup &meas, StatesGroup &s
 
       V3D angvel_now(head->angular_velocity.x, head->angular_velocity.y, head->angular_velocity.z);
       V3D acc_now(head->linear_acceleration.x, head->linear_acceleration.y, head->linear_acceleration.z);
-      fout_imu << setw(10) << head->header.stamp.toSec() << "  " << angvel_now.transpose()<< " " << acc_now.transpose() << endl;
+      fout_imu << setw(10) << stamp_seconds(head->header.stamp) << "  " << angvel_now.transpose()<< " " << acc_now.transpose() << endl;
 
     angvel_avr -= state_inout.bias_g;
     acc_avr     = acc_avr / IMU_mean_acc_norm * G_m_s2 - state_inout.bias_a;
 
-    if(head->header.stamp.toSec() < last_lidar_end_time_)
-        dt = tail->header.stamp.toSec() - last_lidar_end_time_;
+    if(stamp_seconds(head->header.stamp) < last_lidar_end_time_)
+        dt = stamp_seconds(tail->header.stamp) - last_lidar_end_time_;
     else
-        dt = tail->header.stamp.toSec() - head->header.stamp.toSec();
+        dt = stamp_seconds(tail->header.stamp) - stamp_seconds(head->header.stamp);
     
     /* covariance propagation */
     M3D acc_avr_skew;
@@ -366,7 +366,7 @@ void ImuProcess::propagation_and_undist(const MeasureGroup &meas, StatesGroup &s
     /* save the poses at each IMU measurements (global frame)*/
     angvel_last = angvel_avr;
     acc_s_last  = acc_imu;
-    double &&offs_t = tail->header.stamp.toSec() - pcl_beg_time;
+    double &&offs_t = stamp_seconds(tail->header.stamp) - pcl_beg_time;
     IMUpose.push_back(set_pose6d(offs_t, acc_imu, angvel_avr, vel_imu, pos_imu, R_imu));
   }
 
