@@ -90,6 +90,7 @@ bool lidar_pushed, flg_reset, flg_exit = false, flg_EKF_inited = true;
 bool imu_en = false;
 bool scan_pub_en = false, dense_pub_en = false, scan_body_pub_en = false;
 bool runtime_pos_log = false, pcd_save_en = false, extrinsic_est_en = true, path_en = true;
+string world_frame = "li_init_world", lidar_pose_frame = "li_init_body";
 
 // LI-Init Parameters
 bool cut_frame = true, data_accum_finished = false, data_accum_start = false, online_calib_finish = false, refine_print = false;
@@ -585,7 +586,7 @@ void publish_frame_world(const ros::Publisher &pubLaserCloudFullRes) {
             pcl::toROSMsg(*laserCloudWorld, laserCloudmsg);
 
         laserCloudmsg.header.stamp = stamp_from_seconds(lidar_end_time);
-        laserCloudmsg.header.frame_id = "li_init_world";
+        laserCloudmsg.header.frame_id = world_frame;
         pubLaserCloudFullRes.publish(laserCloudmsg);
         publish_count -= PUBFRAME_PERIOD;
     }
@@ -621,7 +622,7 @@ void publish_frame_body(const ros::Publisher &pubLaserCloudFullRes_body) {
     sensor_msgs::PointCloud2 laserCloudmsg;
     pcl::toROSMsg(*feats_undistort, laserCloudmsg);
     laserCloudmsg.header.stamp = stamp_from_seconds(lidar_end_time);
-    laserCloudmsg.header.frame_id = "li_init_world";
+    laserCloudmsg.header.frame_id = lidar_pose_frame;
     pubLaserCloudFullRes_body.publish(laserCloudmsg);
 }
 
@@ -634,7 +635,7 @@ void publish_effect_world(const ros::Publisher &pubLaserCloudEffect) {
     sensor_msgs::PointCloud2 laserCloudFullRes3;
     pcl::toROSMsg(*laserCloudWorld, laserCloudFullRes3);
     laserCloudFullRes3.header.stamp = stamp_from_seconds(lidar_end_time);
-    laserCloudFullRes3.header.frame_id = "li_init_world";
+    laserCloudFullRes3.header.frame_id = world_frame;
     pubLaserCloudEffect.publish(laserCloudFullRes3);
 }
 
@@ -642,7 +643,7 @@ void publish_map(const ros::Publisher &pubLaserCloudMap) {
     sensor_msgs::PointCloud2 laserCloudMap;
     pcl::toROSMsg(*featsFromMap, laserCloudMap);
     laserCloudMap.header.stamp = stamp_from_seconds(lidar_end_time);
-    laserCloudMap.header.frame_id = "li_init_world";
+    laserCloudMap.header.frame_id = world_frame;
     pubLaserCloudMap.publish(laserCloudMap);
 }
 
@@ -666,8 +667,8 @@ void set_posestamp(T &out) {
 }
 
 void publish_odometry(const ros::Publisher &pubOdomAftMapped) {
-    odomAftMapped.header.frame_id = "li_init_world";
-    odomAftMapped.child_frame_id = "li_init_body";
+    odomAftMapped.header.frame_id = world_frame;
+    odomAftMapped.child_frame_id = lidar_pose_frame;
     odomAftMapped.header.stamp = stamp_from_seconds(lidar_end_time);
     set_posestamp(odomAftMapped.pose.pose);
 
@@ -676,7 +677,7 @@ void publish_odometry(const ros::Publisher &pubOdomAftMapped) {
     static tf2_ros::TransformBroadcaster br(ros::node_instance());
     geometry_msgs::msg::TransformStamped transform;
     transform.header = odomAftMapped.header;
-    transform.child_frame_id = "li_init_body";
+    transform.child_frame_id = lidar_pose_frame;
     transform.transform.translation.x = odomAftMapped.pose.pose.position.x;
     transform.transform.translation.y = odomAftMapped.pose.pose.position.y;
     transform.transform.translation.z = odomAftMapped.pose.pose.position.z;
@@ -687,7 +688,7 @@ void publish_odometry(const ros::Publisher &pubOdomAftMapped) {
 void publish_mavros(const ros::Publisher &mavros_pose_publisher) {
     msg_body_pose.header.stamp = stamp_from_seconds(lidar_end_time);
 
-    msg_body_pose.header.frame_id = "li_init_world";
+    msg_body_pose.header.frame_id = world_frame;
     set_posestamp(msg_body_pose.pose);
     mavros_pose_publisher.publish(msg_body_pose);
 }
@@ -695,7 +696,7 @@ void publish_mavros(const ros::Publisher &mavros_pose_publisher) {
 void publish_path(const ros::Publisher pubPath) {
     set_posestamp(msg_body_pose.pose);
     msg_body_pose.header.stamp = stamp_from_seconds(lidar_end_time);
-    msg_body_pose.header.frame_id = "li_init_world";
+    msg_body_pose.header.frame_id = world_frame;
     static int jjj = 0;
     jjj++;
     if (jjj % 5 == 0) // if path is too large, the RVIZ will crash
@@ -788,6 +789,8 @@ int main(int argc, char **argv) {
     nh.param<double>("initialization/online_refine_time", online_refine_time, 20.0);
     nh.param<double>("initialization/mean_acc_norm", mean_acc_norm, 9.81);
     nh.param<bool>("initialization/fix_time_lag", Init_LI->fix_time_lag, false);
+    nh.param<string>("frames/world", world_frame, "li_init_world");
+    nh.param<string>("frames/lidar_pose", lidar_pose_frame, "li_init_body");
     nh.param<double>("initialization/data_accum_length", Init_LI->data_accum_length, 300);
     nh.param<vector<double>>("initialization/Rot_LI_cov", Rot_LI_cov, vector<double>());
     nh.param<vector<double>>("initialization/Trans_LI_cov", Trans_LI_cov, vector<double>());
@@ -803,7 +806,7 @@ int main(int argc, char **argv) {
     cout << "LiDAR-only odometry starts." << endl;
 
     path.header.stamp = stamp_from_seconds(lidar_end_time);
-    path.header.frame_id = "li_init_world";
+    path.header.frame_id = world_frame;
 
     /*** variables definition ***/
     VD(DIM_STATE) solution;

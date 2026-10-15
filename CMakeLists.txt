@@ -33,5 +33,5 @@ endif()
 
 install(TARGETS li_init DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
-install(FILES launch/go2_l2_calibration.launch.py DESTINATION share/${PROJECT_NAME}/launch)
+install(FILES launch/go2_l2_calibration.launch.py launch/go2_body_imu_calibration.launch.py DESTINATION share/${PROJECT_NAME}/launch)
 ament_package()
