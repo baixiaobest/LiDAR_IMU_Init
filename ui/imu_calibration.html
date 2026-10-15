@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IMU calibration</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#182630;background:#f3f6f5}
+    *{box-sizing:border-box}body{margin:0}header{background:#122d35;color:white;padding:1.2rem max(1rem,calc((100vw - 1050px)/2));display:flex;align-items:center;justify-content:space-between;gap:1rem}h1{font-size:1.4rem;margin:0}h2{font-size:1.15rem;margin:.2rem 0 1rem}p{line-height:1.5}main{max-width:1050px;margin:1.5rem auto;padding:0 1rem;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,1fr);gap:1rem}.card{background:white;border:1px solid #d8e3df;border-radius:14px;padding:1.25rem;box-shadow:0 4px 18px #163a3910}.wide{grid-column:1 / -1}.eyebrow{font-size:.78rem;color:#52736e;text-transform:uppercase;letter-spacing:.08em;font-weight:700}.hero{font-size:2rem;font-weight:700;margin:.4rem 0;color:#103f42}.phase{font-weight:600;color:#306963}.progress{height:12px;border-radius:10px;background:#dbe6e2;overflow:hidden;margin:1rem 0}.progress span{display:block;height:100%;background:#167f78;width:0;transition:width .25s}small,.muted{color:#657d7a}.alert{background:#e8f5f0;border-left:4px solid #168078;padding:.8rem 1rem;border-radius:7px}.status{background:#f5f7f7;padding:.8rem 1rem;border-radius:8px;white-space:pre-wrap}.steps{padding:0;list-style:none;display:grid;gap:.4rem;max-height:600px;overflow:auto}.steps li{display:flex;gap:.6rem;padding:.55rem .7rem;border-radius:8px;color:#59706b}.steps li.current{background:#d9f0e7;color:#153f37;font-weight:700}.steps li.done{color:#187064}.dot{width:1.5rem;text-align:center;flex:none}.controls{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}select,button{padding:.7rem;border-radius:8px;border:1px solid #8eaaa2;font:inherit}select{flex:1;min-width:200px;background:white}button{background:#176c67;color:white;cursor:pointer;border-color:#176c67;font-weight:600}button:disabled{opacity:.45;cursor:not-allowed}code{overflow-wrap:anywhere}#connection{font-size:.85rem;opacity:.85}#error{color:#a83030;font-weight:600}@media(max-width:760px){main{grid-template-columns:1fr}.wide{grid-column:auto}.hero{font-size:1.7rem}}
+  </style>
+</head>
+<body>
+  <header><h1>IMU calibration</h1><span id="connection">Connecting…</span></header>
+  <main>
+    <section class="card">
+      <div class="eyebrow" id="phase">Current phase</div>
+      <div class="hero" id="instruction-title">Waiting for calibration</div>
+      <p id="instruction-detail">Keep the robot supported while this page connects.</p>
+      <div class="progress"><span id="progress-fill"></span></div>
+      <div><strong id="counts">0 steps completed</strong> <span class="muted" id="phase-count"></span></div>
+      <p class="alert">These are physical pose suggestions. The node checks IMU measurements for a stable, distinct orientation; the robot and LiDAR housing do not have to be perfectly level.</p>
+      <p class="alert">For gyro steps, body X points forward, Y points left, and Z points up. Return to the baseline flat pose after pitch; that return does not count as roll. After rolling, its end pose starts the tilted twist.</p>
+      <div class="eyebrow">Live status</div><p class="status" id="message"></p>
+      <div class="eyebrow">Current IMU acceleration</div><p id="direction">Waiting for IMU…</p>
+    </section>
+    <section class="card"><h2>Steps</h2><ol class="steps" id="steps"></ol></section>
+    <section class="card wide">
+      <h2>Continue from an accelerometer calibration</h2>
+      <p>Select a saved accelerometer result to start a fresh gyro session. The current recording will be saved first.</p>
+      <div class="controls"><select id="calibration-list"><option value="">Choose a saved result…</option></select><button id="start-gyro" disabled>Start gyro steps</button></div>
+      <p id="selection-message" class="muted"></p>
+      <p><small>Results: <code id="output-path">Waiting…</code></small></p>
+    </section>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    let lastChoices = '';
+    function text(id,value){$(id).textContent=value ?? ''}
+    function render(s){
+      text('connection', s.connected ? 'IMU connected' : 'Waiting for IMU');
+      text('phase', `Phase ${s.progress.phase_index}/${s.progress.phase_total}: ${s.progress.phase}`);
+      text('instruction-title',s.instruction.title);
+      text('instruction-detail',s.instruction.detail);
+      text('counts',`${s.progress.completed}/${s.progress.total} steps completed`);
+      text('phase-count',`· ${s.progress.phase_completed}/${s.progress.phase_target} ${s.progress.unit}`);
+      $('progress-fill').style.width=`${s.progress.total ? 100*s.progress.completed/s.progress.total : 0}%`;
+      text('message',s.message);
+      text('direction',s.acceleration_raw_m_s2 ? `X ${s.acceleration_raw_m_s2[0].toFixed(2)} · Y ${s.acceleration_raw_m_s2[1].toFixed(2)} · Z ${s.acceleration_raw_m_s2[2].toFixed(2)} m/s² · magnitude ${s.acceleration_norm_m_s2.toFixed(2)} m/s²` : 'Waiting for IMU…');
+      text('output-path',s.output_path);
+      $('steps').replaceChildren(...s.steps.map((step,i)=>{
+        const item=document.createElement('li');item.className=step.done?'done':step.current?'current':'';
+        const dot=document.createElement('span');dot.className='dot';dot.textContent=step.done?'✓':step.current?'➜':String(i+1);
+        const label=document.createElement('span');label.textContent=`${step.title} · ${step.phase}`;
+        item.append(dot,label);return item;
+      }));
+      const choices=JSON.stringify(s.available_accelerometers);
+      if(choices!==lastChoices){
+        const chosen=$('calibration-list').value;
+        $('calibration-list').replaceChildren(new Option('Choose a saved result…',''),...s.available_accelerometers.map(c=>new Option(`${c.session} · ${c.validation}`,c.session)));
+        if(s.available_accelerometers.some(c=>c.session===chosen)) $('calibration-list').value=chosen;
+        lastChoices=choices;
+      }
+      $('start-gyro').disabled=!$('calibration-list').value;
+      if(s.selection_message) text('selection-message',s.selection_message);
+    }
+    async function refresh(){
+      try{const response=await fetch('/api/status',{cache:'no-store'});if(!response.ok)throw new Error('UI server unavailable');render(await response.json())}
+      catch(error){text('connection','Disconnected');text('message',error.message)}
+    }
+    $('calibration-list').addEventListener('change',()=>{$('start-gyro').disabled=!$('calibration-list').value});
+    $('start-gyro').addEventListener('click',async()=>{
+      const session=$('calibration-list').value;if(!session)return;
+      if(!confirm(`Start a new gyro calibration using ${session}?`))return;
+      $('start-gyro').disabled=true;
+      try{const response=await fetch('/api/use-accelerometer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session})});
+        const result=await response.json();if(!response.ok)throw new Error(result.error);text('selection-message','Starting gyro calibration…');await refresh();}
+      catch(error){text('selection-message',error.message);$('start-gyro').disabled=false}
+    });
+    refresh();setInterval(refresh,1000);
+  </script>
+</body>
+</html>
