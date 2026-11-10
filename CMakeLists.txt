@@ -39,9 +39,12 @@ install(DIRECTORY ui DESTINATION share/${PROJECT_NAME})
 install(FILES launch/go2_l2_calibration.launch.py launch/go2_body_imu_calibration.launch.py launch/l2_imu_static_calibration.launch.py launch/go2_body_imu_static_calibration.launch.py DESTINATION share/${PROJECT_NAME}/launch)
 install(PROGRAMS scripts/imu_static_calibration_node.py
   DESTINATION lib/${PROJECT_NAME} RENAME imu_static_calibration)
+install(PROGRAMS scripts/imu_intrinsic_correction_node.py
+  DESTINATION lib/${PROJECT_NAME} RENAME imu_intrinsic_correction)
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(test_imu_static_calibration test/test_imu_static_calibration.py)
+  ament_add_pytest_test(test_imu_intrinsic_correction test/test_imu_intrinsic_correction.py)
   ament_add_pytest_test(test_guided_imu_ros test/test_guided_imu_ros.py
     ENV ROS_DOMAIN_ID=189 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 TIMEOUT 120)
 endif()

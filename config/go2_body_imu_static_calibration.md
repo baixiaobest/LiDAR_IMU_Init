@@ -39,6 +39,40 @@ the `body` frame. It has one metre of length per 9.81 m/s². This view uses
 The six stationary pose instructions, acceptance conditions, correction model,
 and result format are the same as in `l2_imu_static_calibration.md`.
 
+## Use these intrinsics for LiDAR-to-body-IMU calibration
+
+The standalone `go2_body_imu_calibration.launch.py` now publishes the raw body
+IMU on `/li_init_go2/input/imu`, applies the validated bias and diagonal scale
+from `config/go2_body_imu_intrinsics_20261015.yaml`, and publishes
+`/li_init_go2/input/imu_corrected`. LI-Init reads the corrected topic for both
+data collection and refinement. Headers, timestamps, frame ID, and orientation
+are preserved; reported acceleration and angular velocity covariances are
+scaled with the same matrices. FAST-LIO and the L2 internal IMU are unaffected.
+
+```bash
+ros2 launch lidar_imu_init go2_body_imu_calibration.launch.py
+```
+
+To open the calibration RViz view with the launch:
+
+```bash
+ros2 launch lidar_imu_init go2_body_imu_calibration.launch.py rviz:=true
+```
+
+Or open it separately with `rviz2 -d "$(ros2 pkg prefix lidar_imu_init)/share/lidar_imu_init/config/go2_body_lidar_calibration.rviz"`.
+The view shows `/li_init_go2/path`, `/li_init_go2/odom`, the registered cloud,
+and TF axes. The tree is `li_init_go2_world → li_init_go2_lidar_pose →
+li_init_go2_body_imu_pose`. The body IMU child appears after LI-Init obtains
+its first extrinsic estimate, and its pose follows later refinement updates.
+These are LI-Init estimates, not the existing FAST-LIO frames or a measured
+ground-truth transform.
+
+To use a later validated body IMU calibration, pass
+`imu_intrinsics:=/absolute/path/to/calibration.yaml`. The correction node
+rejects incomplete, failed, or non-body calibration reports. Keep the input
+acceleration in SI units and `initialization/mean_acc_norm: 9.81` in the LI-Init
+YAML. This correction does not determine LiDAR-to-IMU time lag or extrinsics.
+
 Gyro prompts refer to the **robot body axes**: X forward, Y left, Z up. Begin
 with the body flat and hold still. Pitch about body Y, then hold. Return to
 the initial flat orientation and hold; this return motion is deliberately

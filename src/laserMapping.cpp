@@ -90,7 +90,7 @@ bool lidar_pushed, flg_reset, flg_exit = false, flg_EKF_inited = true;
 bool imu_en = false;
 bool scan_pub_en = false, dense_pub_en = false, scan_body_pub_en = false;
 bool runtime_pos_log = false, pcd_save_en = false, extrinsic_est_en = true, path_en = true;
-string world_frame = "li_init_world", lidar_pose_frame = "li_init_body";
+string world_frame = "li_init_world", lidar_pose_frame = "li_init_body", imu_pose_frame = "";
 
 // LI-Init Parameters
 bool cut_frame = true, data_accum_finished = false, data_accum_start = false, online_calib_finish = false, refine_print = false;
@@ -683,6 +683,25 @@ void publish_odometry(const ros::Publisher &pubOdomAftMapped) {
     transform.transform.translation.z = odomAftMapped.pose.pose.position.z;
     transform.transform.rotation = odomAftMapped.pose.pose.orientation;
     br.sendTransform(transform);
+    if (imu_en && !imu_pose_frame.empty()) {
+        // offset_R_L_I / offset_T_L_I map LiDAR coordinates into IMU coordinates.
+        // The TF child is the IMU, so invert that transform for LiDAR -> IMU.
+        geometry_msgs::msg::TransformStamped imu_transform;
+        imu_transform.header = odomAftMapped.header;
+        imu_transform.header.frame_id = lidar_pose_frame;
+        imu_transform.child_frame_id = imu_pose_frame;
+        const M3D R_I_L = state.offset_R_L_I.transpose();
+        const V3D p_I_L = -R_I_L * state.offset_T_L_I;
+        const Eigen::Quaterniond q_I_L(R_I_L);
+        imu_transform.transform.translation.x = p_I_L.x();
+        imu_transform.transform.translation.y = p_I_L.y();
+        imu_transform.transform.translation.z = p_I_L.z();
+        imu_transform.transform.rotation.x = q_I_L.x();
+        imu_transform.transform.rotation.y = q_I_L.y();
+        imu_transform.transform.rotation.z = q_I_L.z();
+        imu_transform.transform.rotation.w = q_I_L.w();
+        br.sendTransform(imu_transform);
+    }
 }
 
 void publish_mavros(const ros::Publisher &mavros_pose_publisher) {
@@ -791,6 +810,7 @@ int main(int argc, char **argv) {
     nh.param<bool>("initialization/fix_time_lag", Init_LI->fix_time_lag, false);
     nh.param<string>("frames/world", world_frame, "li_init_world");
     nh.param<string>("frames/lidar_pose", lidar_pose_frame, "li_init_body");
+    nh.param<string>("frames/imu_pose", imu_pose_frame, "");
     nh.param<double>("initialization/data_accum_length", Init_LI->data_accum_length, 300);
     nh.param<vector<double>>("initialization/Rot_LI_cov", Rot_LI_cov, vector<double>());
     nh.param<vector<double>>("initialization/Trans_LI_cov", Trans_LI_cov, vector<double>());

@@ -5,6 +5,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -32,6 +33,11 @@ def _nodes(context):
         Node(package='go2_dds_ros2_bridge', executable='imu_bridge',
              name='li_init_go2_imu_input', output='screen',
              arguments=dds_args + ['--ros-topic', '/li_init_go2/input/imu', '--frame-id', 'body']),
+        Node(package='lidar_imu_init', executable='imu_intrinsic_correction',
+             name='li_init_go2_imu_intrinsic_correction', output='screen',
+             parameters=[{'calibration_file': LaunchConfiguration('imu_intrinsics'),
+                          'input_topic': '/li_init_go2/input/imu',
+                          'output_topic': '/li_init_go2/input/imu_corrected'}]),
         Node(package='lidar_imu_init', executable='li_init', name='li_init_go2',
              output='screen', parameters=[LaunchConfiguration('config')],
              additional_env=environment,
@@ -44,15 +50,24 @@ def _nodes(context):
                  ('/aft_mapped_to_init', '/li_init_go2/odom'),
                  ('/path', '/li_init_go2/path'),
              ]),
+        Node(package='rviz2', executable='rviz2', name='li_init_go2_rviz',
+             output='screen', condition=IfCondition(LaunchConfiguration('rviz')),
+             arguments=['-d', LaunchConfiguration('rviz_config')]),
     ]
 
 
 def generate_launch_description():
-    config = str(Path(get_package_share_directory('lidar_imu_init')) / 'config/go2_body_imu_ros2.yaml')
+    share = Path(get_package_share_directory('lidar_imu_init'))
+    config = str(share / 'config/go2_body_imu_ros2.yaml')
+    intrinsics = str(share / 'config/go2_body_imu_intrinsics_20261015.yaml')
+    rviz_config = str(share / 'config/go2_body_lidar_calibration.rviz')
     return LaunchDescription([
         DeclareLaunchArgument('dds_domain_id', default_value=str(DEFAULT_HARDWARE_DDS_RUNTIME.domain_id)),
         DeclareLaunchArgument('dds_interface', default_value=DEFAULT_HARDWARE_DDS_RUNTIME.interface),
         DeclareLaunchArgument('config', default_value=config),
+        DeclareLaunchArgument('imu_intrinsics', default_value=intrinsics),
+        DeclareLaunchArgument('rviz', default_value='false'),
+        DeclareLaunchArgument('rviz_config', default_value=rviz_config),
         DeclareLaunchArgument('output_dir', default_value=str(Path.home() / '.ros/li_init_go2_body')),
         OpaqueFunction(function=_nodes),
     ])

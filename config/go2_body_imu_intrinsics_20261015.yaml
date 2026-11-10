@@ -1,0 +1,41 @@
+# Go2 body IMU calibration; extracted from result/go2_body_imu_gyroscope_20261015_200317.yaml
+schema_version: 2
+frame_id: body
+stage: complete
+source_report: go2_body_imu_gyroscope_20261015_200317.yaml
+accelerometer:
+  model: diagonal_bias_scale
+  bias_m_s2:
+  - -0.07796593224394213
+  - 0.08697329763321235
+  - -0.19624653869696315
+  correction_matrix:
+  - - 1.0095694031177982
+    - 0.0
+    - 0.0
+  - - 0.0
+    - 1.0105213072542276
+    - 0.0
+  - - 0.0
+    - 0.0
+    - 1.007755982496512
+  validation:
+    quality_pass: true
+gyroscope:
+  model: diagonal_bias_scale
+  bias_rad_s:
+  - 0.0016625212498232052
+  - 0.007887682071313146
+  - 0.0016096398773707448
+  correction_matrix:
+  - - 0.9975112253412756
+    - 0.0
+    - 0.0
+  - - 0.0
+    - 0.9836510828099626
+    - 0.0
+  - - 0.0
+    - 0.0
+    - 0.9795362131847475
+  validation:
+    quality_pass: true

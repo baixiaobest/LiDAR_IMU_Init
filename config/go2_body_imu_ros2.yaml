@@ -7,9 +7,10 @@
     frames:
       world: li_init_go2_world
       lidar_pose: li_init_go2_lidar_pose
+      imu_pose: li_init_go2_body_imu_pose
     common:
       lid_topic: /li_init_go2/input/cloud
-      imu_topic: /li_init_go2/input/imu
+      imu_topic: /li_init_go2/input/imu_corrected
     preprocess:
       lidar_type: 2  # PointCloud2 fields x/y/z/intensity/ring/time
       scan_line: 32
